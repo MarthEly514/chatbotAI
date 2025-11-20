@@ -7,19 +7,14 @@ const app = express();
 const port = 3000;
 
 // Middleware
-// Attention: En production, configurez CORS pour autoriser UNIQUEMENT votre domaine frontend.
 app.use(cors());
 app.use(json()); // Pour analyser les corps de requête en JSON
 
 // --- Configuration API ---
-// La clé est chargée depuis le fichier .env (NE JAMAIS LA CODER EN DUR)
+// La clé est chargée depuis le fichier .env
 const HF_API_KEY = process.env.HUGGING_FACE_API_KEY;
 // URL d'un modèle NLI (Inference API) pour la démo
-const HF_MODEL_URL = process.env.HF_MODEL_URL 
-
-// Si vous utilisez d'autres outils (ex: Google Search pour plus de contexte),
-// ce code serait l'endroit idéal pour les intégrer.
-// const GOOGLE_SEARCH_KEY = process.env.GOOGLE_SEARCH_API_KEY;
+const HF_MODEL_URL = process.env.HF_MODEL_URL; 
 
 
 /**
@@ -32,16 +27,16 @@ app.post('/api/verify', async (req, res) => {
         return res.status(400).json({ error: "Le champ 'input' est requis." });
     }
 
-    if (!HF_API_KEY) {
-        console.error("Clé API Hugging Face non configurée.");
-        return res.status(500).json({ error: "Configuration API manquante sur le serveur." });
+    // 🚩 Vérification de la clé API
+    if (!HF_API_KEY || HF_API_KEY.includes('votre_vrai_jeton_huggingface_ici')) {
+        console.error("Clé API Hugging Face non configurée ou placeholder utilisé.");
+        return res.status(500).json({ error: "Configuration API manquante sur le serveur. Veuillez remplacer le placeholder dans .env." });
     }
 
     // --- 1. Logique de Traitement (Scraping ou formatage) ---
     let textToAnalyze = input;
     if (isLink) {
-        // ⚠️ En production : Ici, vous implémenteriez la logique de scraping
-        // pour récupérer le contenu réel de l'URL avant de l'envoyer au modèle.
+        // En production : Ici, vous implémenteriez la logique de scraping
         textToAnalyze = `Veuillez analyser la fiabilité de cette information provenant du lien : ${input}`;
         console.log(`[Backend] Tenter de scraper le lien: ${input}`);
     }
@@ -56,29 +51,63 @@ app.post('/api/verify', async (req, res) => {
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                "inputs": textToAnalyze,
-                "options": { "wait_for_model": true }
+                // --- CORRECTION CRITIQUE : AJOUT DU BLOC 'parameters' ---
+                inputs: textToAnalyze,
+                parameters: {
+                    candidate_labels: ["CONTRADICTION", "ENTAILMENT", "NEUTRAL"],
+                    multi_label: false
+                },
+                options: { "wait_for_model": true }
             })
         });
 
         if (!hfResponse.ok) {
-            const errorData = await hfResponse.json();
-            console.error('Erreur API Hugging Face:', hfResponse.status, errorData);
+            // 🚩 Gestion robuste des erreurs (JSON ou Texte)
+            let errorData;
+            try {
+                errorData = await hfResponse.json();
+            } catch (e) {
+                // Si la lecture JSON échoue (ex: réponse 404 "Not Found" en texte brut)
+                errorData = await hfResponse.text();
+            }
+            
+            console.error('Erreur API Hugging Face (Statut %d):', hfResponse.status, errorData);
+            
+            const errorMessage = typeof errorData === 'object' && errorData.error 
+                ? errorData.error // Erreur JSON structurée de HF
+                : `Statut ${hfResponse.status}: ${errorData}`; // Erreur de texte brut
+
             return res.status(502).json({ 
                 error: "Erreur lors de la communication avec l'API Hugging Face.",
-                details: errorData 
+                details: errorMessage
             });
         }
 
         const data = await hfResponse.json();
 
         // --- 3. Logique de Fact-Checking et Préparation de la Réponse ---
-        // Cette partie est cruciale : elle traduit la sortie brute du modèle
-        // en une réponse utilisateur claire.
-
-        const bestResult = data[0] && data[0].length > 0 ? 
-            data[0].reduce((prev, current) => (prev.score > current.score) ? prev : current) : null;
         
+        // Assurer que nous travaillons avec l'objet de données principal
+        let responseData = data;
+        if (Array.isArray(data) && data.length > 0) {
+            responseData = data[0];
+        }
+
+        let bestResult = null;
+        if (responseData && responseData.labels && responseData.scores) {
+            let maxScore = -1;
+            let maxLabel = 'NEUTRAL';
+            
+            responseData.scores.forEach((score, index) => {
+                if (score > maxScore) {
+                    maxScore = score;
+                    maxLabel = responseData.labels[index];
+                }
+            });
+            
+            bestResult = { label: maxLabel, score: maxScore };
+        }
+
         let verificationResult = {
             status: 'PARTIAL',
             explanation: "Information incertaine ou nécessitant des vérifications supplémentaires."
@@ -87,6 +116,7 @@ app.post('/api/verify', async (req, res) => {
         if (bestResult) {
              const { label, score } = bestResult;
 
+             // Logique simple pour déterminer la fiabilité basée sur le score de confiance
              if (label === 'CONTRADICTION' && score > 0.8) {
                 verificationResult.status = 'FAKE_NEWS';
                 verificationResult.explanation = `Le modèle détecte une **forte contradiction** (Score: ${score.toFixed(2)}) avec les faits connus.`;

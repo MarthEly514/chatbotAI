@@ -102,7 +102,13 @@ async function sendToBackendForVerification(input, isLink = false) {
             headers: {
                 "Content-Type": "application/json"
             },
-            body: JSON.stringify({ input, isLink })
+            body: JSON.stringify({
+                input, isLink,
+                parameters: {
+                    candidate_labels: ["CONTRADICTION", "ENTAILMENT", "NEUTRAL"],
+                    multi_label: false
+                }
+            })
         });
 
         // Supprimer l'indicateur de chargement
