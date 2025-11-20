@@ -1,9 +1,7 @@
-// server/server.js
-
 import express, { json } from 'express';
 import cors from 'cors';
 import fetch from 'node-fetch'; // Pour faire des requêtes HTTP depuis Node
-require('dotenv').config(); // Pour gérer les variables d'environnement
+import 'dotenv/config'; // Chargement des variables d'environnement (.env) pour les modules ES
 
 const app = express();
 const port = 3000;
