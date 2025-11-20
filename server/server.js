@@ -17,7 +17,7 @@ app.use(json()); // Pour analyser les corps de requête en JSON
 // La clé est chargée depuis le fichier .env (NE JAMAIS LA CODER EN DUR)
 const HF_API_KEY = process.env.HUGGING_FACE_API_KEY;
 // URL d'un modèle NLI (Inference API) pour la démo
-const HF_MODEL_URL = "https://api-inference.huggingface.co/models/ynie/albert-xxlarge-v2-snli_mnli_fever_anli_R1_R2_R3-nli"; 
+const HF_MODEL_URL = process.env.HF_MODEL_URL 
 
 // Si vous utilisez d'autres outils (ex: Google Search pour plus de contexte),
 // ce code serait l'endroit idéal pour les intégrer.
