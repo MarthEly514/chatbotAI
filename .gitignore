@@ -1,5 +1,8 @@
 # ------------------------------------
-
+# Fichiers et dossiers sensibles / secrets
+# ------------------------------------
+# Le fichier .env contient votre clé API Hugging Face.
+# Il est CRUCIAL de l'ignorer pour ne jamais la publier.
 .env
 
 # Clés de chiffrement ou autres fichiers secrets
@@ -31,6 +34,15 @@ package-lock.json # Si vous utilisez npm < v7 ou si vous utilisez yarn
 /dist/
 /build/
 
+# ------------------------------------
+# Fichiers spécifiques aux OS et IDEs
+# ------------------------------------
+# macOS / OS X
+.DS_Store
+
+# Windows
+Thumbs.db
+ehthumbs.db
 
 # VS Code
 # Les fichiers spécifiques à votre environnement de travail local
