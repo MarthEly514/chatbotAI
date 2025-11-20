@@ -1,3 +1,5 @@
+const BACKEND_URL = 'http://localhost:3000/api/verify';
+
 
 const BACKEND_URL = 'http://localhost:3000/api/verify';
 
