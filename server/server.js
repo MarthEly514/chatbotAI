@@ -1,8 +1,8 @@
 // server/server.js
 
-const express = require('express');
-const cors = require('cors');
-const fetch = require('node-fetch'); // Pour faire des requêtes HTTP depuis Node
+import express, { json } from 'express';
+import cors from 'cors';
+import fetch from 'node-fetch'; // Pour faire des requêtes HTTP depuis Node
 require('dotenv').config(); // Pour gérer les variables d'environnement
 
 const app = express();
@@ -11,7 +11,7 @@ const port = 3000;
 // Middleware
 // Attention: En production, configurez CORS pour autoriser UNIQUEMENT votre domaine frontend.
 app.use(cors());
-app.use(express.json()); // Pour analyser les corps de requête en JSON
+app.use(json()); // Pour analyser les corps de requête en JSON
 
 // --- Configuration API ---
 // La clé est chargée depuis le fichier .env (NE JAMAIS LA CODER EN DUR)
