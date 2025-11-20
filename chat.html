@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    <title>Chat Xo dodo</title>
+</head>
+
+<body>
+    <!-- Interface du chatbot -->
+    <div id="chatPage" class="min-h-screen">
+        <!-- En-tête -->
+        <header class="gradient-bg text-white py-4 px-6 shadow-md">
+            <div class="container mx-auto h-full flex flex-row justify-between items-center">
+                <div class="flex items-center">
+                    <div class="logo-circle w-12 h-12 mr-3">
+                        <img src="/xo do do 2.png" alt="">
+                        <i class="logo-icon fas fa-shield-check text-lg"></i>
+                    </div>
+                    <h1 class="text-xl md:text-2xl font-semibold cursor-pointer"><a href="/accueil.html">XO dodo AI</a></h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <!-- Réseaux sociaux -->
+                    <a href="https://www.facebook.com/profile.php?id=61584038608625" target="_blank"
+                        class="text-white hover:text-blue-200 transition-colors duration-300">
+                        <i class="fab fa-facebook"></i>
+                    </a>
+                    <a href="https://www.tiktok.com/@asimc00?_r=1&_t=ZM-91XcFE00Jaq" target="_blank"
+                        class="text-white hover:text-blue-200 transition-colors duration-300">
+                        <i class="fab fa-tiktok"></i>
+                    </a>
+                    <button id="backToHome"
+                        class="bg-white min-w-15 aspect-square md:aspect-auto bg-opacity-20 hover:bg-opacity-30 py-2 px-4 gap-2 flex flex-row items-center justify-center  rounded-full transition-all duration-300">
+                        <i class="fas fa-home"></i>
+                        <span class="hidden md:inline">Accueil</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Zone de chat -->
+        <div class="container mx-auto px-4 py-6 chat-container flex flex-col">
+            <div id="chatMessages" class="flex-1 overflow-y-auto mb-6 space-y-4 p-4">
+                <!-- Message de bienvenue -->
+                <div class="message bot-message p-4">
+                    <div class="flex items-start">
+                        <div
+                            class="w-8 h-8 rounded-full gradient-bg flex items-center justify-center mr-3 flex-shrink-0">
+                            <i class="fas fa-robot text-white text-xs"></i>
+                        </div>
+                        <div>
+                            <p class="font-medium">Bonjour ! Je suis Xo Dodo AI, votre assistant de vérification
+                                d'informations.</p>
+                            <p class="mt-2">Vous pouvez me soumettre du texte ou un lien que vous souhaitez vérifier. Je
+                                vais analyser le contenu et rechercher des sources fiables pour vous aider à identifier
+                                les
+                                fake news.</p>
+                            <div class="mt-4 p-3 bg-blue-50 rounded-lg">
+                                <p class="text-sm font-medium text-blue-800">Exemples de ce que vous pouvez vérifier :
+                                </p>
+                                <ul class="text-sm text-blue-700 mt-1 list-disc list-inside">
+                                    <li>Articles d'actualité douteux</li>
+                                    <li>Publications sur les réseaux sociaux</li>
+                                    <li>Informations virales</li>
+                                    <li>Théories du complot</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Zone de saisie -->
+            <div class="bg-white rounded-xl shadow-lg p-4 border border-gray-200">
+                <div class="flex space-x-2 mb-3">
+                    <button id="textTab"
+                        class="tab-btn active px-4 py-2 rounded-lg bg-blue-100 text-blue-700 font-medium">Texte</button>
+                    <button id="linkTab"
+                        class="tab-btn px-4 py-2 rounded-lg bg-gray-100 text-gray-700 font-medium">Lien</button>
+                </div>
+
+                <!-- Formulaire de texte -->
+                <div id="textForm" class="space-y-4">
+                    <textarea id="textInput" placeholder="Collez ici le texte que vous souhaitez vérifier..."
+                        class="w-full h-32 resize-none p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"></textarea>
+                    <button id="submitText"
+                        class="w-full gradient-bg text-white py-3 rounded-lg font-medium hover:opacity-90 transition-all duration-300">
+                        <i class="fas fa-search mr-2"></i>Vérifier ce texte
+                    </button>
+                </div>
+
+                <!-- Formulaire de lien -->
+                <div id="linkForm" class="space-y-4 hidden">
+                    <input id="linkInput" type="url" placeholder="https://exemple.com/article"
+                        class="w-full p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    <button id="submitLink"
+                        class="w-full gradient-bg text-white py-3 rounded-lg font-medium hover:opacity-90 transition-all duration-300">
+                        <i class="fas fa-link mr-2"></i>Vérifier ce lien
+                    </button>
+                </div>
+
+                <p class="text-xs text-gray-500 mt-4 text-center">
+                    En utilisant ce service, vous acceptez nos conditions d'utilisation. Les résultats sont fournis à
+                    titre
+                    indicatif.
+                </p>
+            </div>
+        </div>
+    </div>
+    <script src="main.js" defer></script>
+
+</body>
+
+</html>

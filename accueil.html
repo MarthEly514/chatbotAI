@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Xo Dodo AI - Vérification des Fake News</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body class="bg-gray-50">
+    <!-- Page d'accueil -->
+    <div id="homePage" class="min-h-screen gradient-bg flex flex-col items-center justify-center px-4">
+        <div class="text-center text-white max-w-3xl">
+            <!-- Logo -->
+            <div class="logo-container mb-8">
+                <div class="logo-circle mx-auto pulse-animation">
+                    <img src="/xo do do 2.png" alt="">
+                    <i class="logo-icon fas fa-shield-check"></i>
+                </div>
+                <h1 class="text-2xl font-semibold mb-12 mt-4 cursor-pointer"><a href="/accueil.html">XO dodo AI</a></h1>
+            </div>
+
+            <h2 class="text-4xl font-bold mb-6">Vérifiez la véracité des informations en ligne</h2>
+            <p class="text-xl mb-8 opacity-90">
+                Notre intelligence artificielle analyse les textes et les liens que vous fournissez pour déterminer leur
+                fiabilité et détecter les fake news.
+            </p>
+
+            <div class="bg-white bg-opacity-10 backdrop-blur-sm rounded-xl p-6 mb-10 text-left">
+                <h3 class="text-2xl font-semibold mb-4">Comment ça marche ?</h3>
+                <ul class="space-y-3">
+                    <li class="flex items-start">
+                        <i class="fas fa-check-circle text-green-300 mt-1 mr-3"></i>
+                        <span>Copiez-collez un texte douteux ou partagez un lien</span>
+                    </li>
+                    <li class="flex items-start">
+                        <i class="fas fa-check-circle text-green-300 mt-1 mr-3"></i>
+                        <span>Notre IA recherche des sources fiables pour vérifier l'information</span>
+                    </li>
+                    <li class="flex items-start">
+                        <i class="fas fa-check-circle text-green-300 mt-1 mr-3"></i>
+                        <span>Recevez un rapport détaillé sur la fiabilité du contenu</span>
+                    </li>
+                </ul>
+            </div>
+
+            <a href="/chat.html" id="startBtn"
+                class="bg-white text-blue-600 font-bold py-4 px-10 rounded-full text-lg shadow-lg hover:bg-blue-50 transition-all duration-300 transform hover:scale-105">
+                Vérifier un contenu <i class="ml-2 fas fa-arrow-right"></i>
+            </a>
+
+            <!-- Réseaux sociaux -->
+            <div class="mt-8 flex justify-center space-x-6">
+                <a href="https://www.facebook.com/profile.php?id=61584038608625" target="_blank"
+                    class="text-white hover:text-blue-200 transition-colors duration-300 text-2xl">
+                    <i class="fab fa-facebook"></i>
+                </a>
+                <a href="https://www.tiktok.com/@asimc00?_r=1&_t=ZM-91XcFE00Jaq" target="_blank"
+                    class="text-white hover:text-blue-200 transition-colors duration-300 text-2xl">
+                    <i class="fab fa-tiktok"></i>
+                </a>
+            </div>
+
+            <p class="mt-8 text-blue-100">
+                Rejoignez notre communauté dans la lutte contre la désinformation
+            </p>
+        </div>
+    </div>
+    <script src="main.js" defer></script>
+</body>
+
+</html>

@@ -1,0 +1,103 @@
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap');
+
+        * {
+            font-family: 'Montserrat', sans-serif;
+        }
+
+        .gradient-bg {
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+        }
+
+        .chat-container {
+            height: calc(100vh - 140px);
+        }
+
+        .message {
+            max-width: 80%;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        .user-message {
+            background-color: #3b82f6;
+            color: white;
+            border-radius: 18px 18px 4px 18px;
+            margin-left: auto;
+        }
+
+        .bot-message {
+            background-color: #f1f5f9;
+            color: #334155;
+            border-radius: 18px 18px 18px 4px;
+        }
+
+        .fake-news-warning {
+            background-color: #fef2f2;
+            border-left: 4px solid #ef4444;
+            color: #b91c1c;
+        }
+
+        .verified-news {
+            background-color: #f0fdf4;
+            border-left: 4px solid #22c55e;
+            color: #15803d;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .pulse-animation {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.05);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        .logo-container {
+            position: relative;
+            display: inline-block;
+        }
+
+        .logo-circle {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        .logo-icon {
+            font-size: 50px;
+            color: white;
+        }
+
+        /* .logo-text {
+            font-weight: 500;
+            font-size: 30px;
+            margin-bottom: 2em;
+            background: linear-gradient(135deg, #f9f9fa 0%, #03245c 60%, red 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        } */
