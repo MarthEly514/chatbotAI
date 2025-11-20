@@ -1,0 +1,43 @@
+# ------------------------------------
+
+.env
+
+# Clés de chiffrement ou autres fichiers secrets
+*.key
+*.pem
+*.pfx
+
+# ------------------------------------
+# Dépendances Node.js (Backend)
+# ------------------------------------
+# Le dossier node_modules contient toutes les dépendances
+# du projet. Il est trop volumineux et doit être ignoré.
+node_modules/
+/server/node_modules/
+
+# Fichiers d'historique de npm
+npm-debug.log
+yarn-error.log
+package-lock.json # Si vous utilisez npm < v7 ou si vous utilisez yarn
+
+# Fichiers de cache générés par les outils
+.npm/
+.yarn/
+
+# ------------------------------------
+# Fichiers de build et de compilation
+# ------------------------------------
+# Dossier de distribution/compilation (si vous utilisez Webpack, Babel, etc.)
+/dist/
+/build/
+
+
+# VS Code
+# Les fichiers spécifiques à votre environnement de travail local
+.vscode/
+
+# WebStorm / JetBrains
+.idea/
+
+# Fichiers de cache de l'éditeur
+*~
