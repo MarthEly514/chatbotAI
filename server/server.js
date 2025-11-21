@@ -11,11 +11,8 @@ app.use(cors());
 app.use(json()); // Pour analyser les corps de requête en JSON
 
 // --- Configuration API ---
-// La clé est chargée depuis le fichier .env
 const HF_API_KEY = process.env.HUGGING_FACE_API_KEY;
-// URL d'un modèle NLI (Inference API) pour la démo
 const HF_MODEL_URL = process.env.HF_MODEL_URL; 
-
 
 /**
  * Route sécurisée pour la vérification de l'information.
@@ -27,19 +24,26 @@ app.post('/api/verify', async (req, res) => {
         return res.status(400).json({ error: "Le champ 'input' est requis." });
     }
 
-    // 🚩 Vérification de la clé API
     if (!HF_API_KEY || HF_API_KEY.includes('votre_vrai_jeton_huggingface_ici')) {
         console.error("Clé API Hugging Face non configurée ou placeholder utilisé.");
         return res.status(500).json({ error: "Configuration API manquante sur le serveur. Veuillez remplacer le placeholder dans .env." });
     }
 
-    // --- 1. Logique de Traitement (Scraping ou formatage) ---
-    let textToAnalyze = input;
+    // --- 1. AJOUT CRITIQUE : DÉFINITION DE LA PRÉMISSE (FAIT CONNU) ---
+    // ATTENTION : En production, cette prémisse doit être dynamique, 
+    // récupérée d'un moteur de recherche externe (Grounding/RAG) pour le VRAI fact-checking.
+    // Ici, nous utilisons un fait simple pour la démonstration NLI.
+    const CONTEXT_PREMISE = "La capitale de la France est Paris et la Tour Eiffel est l'un de ses monuments les plus célèbres.";
+    
+    let hypothesis = input;
     if (isLink) {
-        // En production : Ici, vous implémenteriez la logique de scraping
-        textToAnalyze = `Veuillez analyser la fiabilité de cette information provenant du lien : ${input}`;
-        console.log(`[Backend] Tenter de scraper le lien: ${input}`);
+        // Logique de scraping simulée pour les liens
+        hypothesis = `L'information du lien est : ${input}`;
     }
+    
+    // Format NLI : Prémisse + Hypothèse (concaténation simple pour ce modèle)
+    const textToAnalyze = CONTEXT_PREMISE + " " + hypothesis;
+    console.log(`[Backend] Texte envoyé au modèle NLI: ${textToAnalyze.substring(0, 100)}...`);
 
 
     try {
@@ -51,7 +55,6 @@ app.post('/api/verify', async (req, res) => {
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                // --- CORRECTION CRITIQUE : AJOUT DU BLOC 'parameters' ---
                 inputs: textToAnalyze,
                 parameters: {
                     candidate_labels: ["CONTRADICTION", "ENTAILMENT", "NEUTRAL"],
@@ -62,20 +65,18 @@ app.post('/api/verify', async (req, res) => {
         });
 
         if (!hfResponse.ok) {
-            // 🚩 Gestion robuste des erreurs (JSON ou Texte)
             let errorData;
             try {
                 errorData = await hfResponse.json();
             } catch (e) {
-                // Si la lecture JSON échoue (ex: réponse 404 "Not Found" en texte brut)
                 errorData = await hfResponse.text();
             }
             
             console.error('Erreur API Hugging Face (Statut %d):', hfResponse.status, errorData);
             
             const errorMessage = typeof errorData === 'object' && errorData.error 
-                ? errorData.error // Erreur JSON structurée de HF
-                : `Statut ${hfResponse.status}: ${errorData}`; // Erreur de texte brut
+                ? errorData.error
+                : `Statut ${hfResponse.status}: ${errorData}`;
 
             return res.status(502).json({ 
                 error: "Erreur lors de la communication avec l'API Hugging Face.",
@@ -87,7 +88,6 @@ app.post('/api/verify', async (req, res) => {
 
         // --- 3. Logique de Fact-Checking et Préparation de la Réponse ---
         
-        // Assurer que nous travaillons avec l'objet de données principal
         let responseData = data;
         if (Array.isArray(data) && data.length > 0) {
             responseData = data[0];
@@ -119,16 +119,15 @@ app.post('/api/verify', async (req, res) => {
              // Logique simple pour déterminer la fiabilité basée sur le score de confiance
              if (label === 'CONTRADICTION' && score > 0.8) {
                 verificationResult.status = 'FAKE_NEWS';
-                verificationResult.explanation = `Le modèle détecte une **forte contradiction** (Score: ${score.toFixed(2)}) avec les faits connus.`;
+                verificationResult.explanation = `Le modèle détecte une **forte contradiction** (Score: ${score.toFixed(2)}) avec le fait connu suivant: "${CONTEXT_PREMISE}".`;
             } else if (label === 'ENTAILMENT' && score > 0.8) {
                 verificationResult.status = 'VERIFIED';
-                verificationResult.explanation = `Le modèle confirme la cohérence (Score: ${score.toFixed(2)}) de cette information avec les faits.`;
+                verificationResult.explanation = `Le modèle confirme la cohérence (Score: ${score.toFixed(2)}) de cette information avec le fait connu suivant: "${CONTEXT_PREMISE}".`;
             } else {
                 verificationResult.explanation = `Le modèle est neutre ou l'indice de confiance (${score.toFixed(2)}) est trop bas.`;
             }
         }
         
-        // Renvoie le résultat de l'analyse au frontend
         res.json(verificationResult);
 
     } catch (error) {
