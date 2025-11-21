@@ -201,19 +201,19 @@ function displayVerificationResult(statusLabel, queryText, explanation) {
         content = `
             <p class="font-medium">Résultat de l'analyse :</p>
             <p class="mt-2">${explanation}</p>
-            <div class="mt-4 p-3 bg-yellow-50 rounded-lg">
-                <p class="text-sm font-medium text-yellow-800 flex items-center">
-                    <i class="fas fa-info-circle mr-2"></i> Information à prendre avec précaution
+            <div class="mt-4 p-3 bg-red-50 rounded-lg">
+                <p class="text-sm font-medium text-red-800 flex items-center">
+                    <i class="fas fa-exclamation-triangle mr-2"></i> 🚨 Attention : Possible fake news
                 </p>
-                <p class="text-sm text-yellow-700 mt-1">
-                    Le modèle n'a pas pu confirmer ou contredire avec une haute certitude.
+                <p class="text-sm text-red-700 mt-1">
+                    L'information semble contredire les données factuelles connues.
                 </p>
             </div>
             <div class="mt-4">
-                <p class="text-sm font-medium">📚 Recommandations :</p>
+                <p class="text-sm font-medium">💡 Conseils pour reconnaître les fake news :</p>
                 <ul class="text-sm mt-1 list-disc list-inside">
-                    <li>**Recherchez le contexte :** Une citation est-elle complète ou tronquée ?</li>
-                    <li>**Consultez des fact-checkers :** Des sites comme l'AFP Factuel, CrossCheck, etc.</li>
+                    <li>**Source inconnue ?** Si le média n'est pas fiable, soyez prudent.</li>
+                    <li>**Recherche Inversée :** Vérifiez si les images ou vidéos sont utilisées hors contexte.</li>
                 </ul>
             </div>
         `;
