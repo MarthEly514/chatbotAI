@@ -20,6 +20,20 @@ const GOOGLE_SEARCH_API_KEY = process.env.GOOGLE_SEARCH_API_KEY;
 const GOOGLE_SEARCH_CX = process.env.GOOGLE_SEARCH_CX; // L'ID de votre moteur de recherche personnalisé
 
 /**
+ * Fonction utilitaire pour tronquer une chaîne à une longueur maximale donnée.
+ * @param {string} str - La chaîne à tronquer.
+ * @param {number} maxLen - La longueur maximale souhaitée.
+ * @returns {string} La chaîne tronquée.
+ */
+function truncateString(str, maxLen) {
+    if (str.length > maxLen) {
+        return str.substring(0, maxLen - 3) + "...";
+    }
+    return str;
+}
+
+
+/**
  * Fonction de Grounding (RAG - Retrieval-Augmented Generation)
  * Appelle l'API Google Custom Search pour récupérer des faits pertinents.
  * @param {string} query - La requête de l'utilisateur.
@@ -27,22 +41,25 @@ const GOOGLE_SEARCH_CX = process.env.GOOGLE_SEARCH_CX; // L'ID de votre moteur d
  */
 async function fetchRealSearchContext(query) {
     console.log(`[Grounding] Tentative de récupération du contexte de recherche pour: ${query}`);
-
+    
     // Si les clés de recherche ne sont pas configurées, on utilise le fallback
     if (!GOOGLE_SEARCH_API_KEY || !GOOGLE_SEARCH_CX) {
         console.warn("[Grounding] CLÉS GOOGLE SEARCH MANQUANTES ou INVALIDE. Utilisation du fallback statique.");
         // --- FALLBACK STATIQUE (pour assurer la fonctionnalité) ---
         if (query.toLowerCase().includes('paris') || query.toLowerCase().includes('france') || query.toLowerCase().includes('capitale')) {
-            return "La capitale de la France est Paris et la Tour Eiffel est l'un de ses monuments les plus célèbres.";
+            return "CONTEXTE FACTUEL: La capitale de la France est Paris et la Tour Eiffel est l'un de ses monuments les plus célèbres.";
         } 
         if (query.toLowerCase().includes('chien') || query.toLowerCase().includes('chat') || query.toLowerCase().includes('animal')) {
-            return "Les chiens sont des mammifères domestiques et la race Golden Retriever est très populaire.";
+            return "CONTEXTE FACTUEL: Les chiens sont des mammifères domestiques et la race Golden Retriever est très populaire.";
         }
-        return "La Terre tourne autour du Soleil et est la troisième planète du système solaire.";
+        return "CONTEXTE FACTUEL: La Terre tourne autour du Soleil et est la troisième planète du système solaire.";
     }
 
     // --- LOGIQUE D'APPEL RÉEL À GOOGLE CUSTOM SEARCH API ---
-    const searchUrl = `https://www.googleapis.com/customsearch/v1?q=${encodeURIComponent(query)}&cx=${GOOGLE_SEARCH_CX}&key=${GOOGLE_SEARCH_API_KEY}&num=3`;
+    // AJOUT CLÉ : L'API Google Custom Search utilise 'lr=lang_xx' pour filtrer la langue.
+    // Nous ajoutons 'lr=lang_fr' pour forcer les résultats en français,
+    // ce qui améliorera la pertinence et la performance du modèle NLI.
+    const searchUrl = `https://www.googleapis.com/customsearch/v1?q=${encodeURIComponent(query)}&cx=${GOOGLE_SEARCH_CX}&key=${GOOGLE_SEARCH_API_KEY}&num=3&lr=lang_fr`;
     
     try {
         const searchResponse = await fetch(searchUrl);
@@ -50,27 +67,32 @@ async function fetchRealSearchContext(query) {
         if (!searchResponse.ok) {
             const errorData = await searchResponse.text();
             console.error("[Grounding] Erreur API Google Search:", searchResponse.status, errorData);
-            return "Une erreur est survenue lors de la recherche de contexte. Utilisons le fait général : La Terre tourne autour du Soleil.";
+            return "CONTEXTE FACTUEL: Une erreur est survenue lors de la recherche de contexte. Utilisateurs, veuillez prendre cette information avec précaution.";
         }
         
         const searchData = await searchResponse.json();
         
         if (searchData.items && searchData.items.length > 0) {
-            // Concaténation des snippets des 3 premiers résultats pour former la Prémisse
-            const snippets = searchData.items
-                .map(item => item.snippet)
-                .join(' --- '); // Séparateur clair pour le modèle NLI
+            // Concaténation des snippets pour former la Prémisse
+            // On préfixe chaque snippet pour le rendre plus clair pour le modèle NLI
+            let snippets = searchData.items
+                .map(item => `[Snippet] ${item.snippet}`)
+                .join(' ');
             
+            // TRONCATURE : Limiter la prémisse totale à une taille plus courte (300 caractères)
+            // pour réduire le bruit dans la Prémisse NLI.
+            snippets = "CONTEXTE FACTUEL: " + truncateString(snippets, 300);
+
             console.log(`[Grounding] Contexte réel récupéré (${searchData.items.length} snippets).`);
             return snippets; 
         } else {
             console.log("[Grounding] Aucun résultat trouvé. Utilisation du fait général.");
-            return "Le moteur de recherche n'a trouvé aucune information récente ou pertinente sur ce sujet. Utilisateurs, veuillez prendre cette information avec précaution.";
+            return "CONTEXTE FACTUEL: Le moteur de recherche n'a trouvé aucune information récente ou pertinente sur ce sujet. Utilisateurs, veuillez prendre cette information avec précaution.";
         }
 
     } catch (e) {
         console.error("[Grounding] Erreur réseau lors de l'appel à l'API de recherche:", e.message);
-        return "Une erreur de réseau empêche la récupération de contexte factuel. Utilisateurs, veuillez prendre cette information avec précaution.";
+        return "CONTEXTE FACTUEL: Une erreur de réseau empêche la récupération de contexte factuel. Utilisateurs, veuillez prendre cette information avec précaution.";
     }
 }
 
@@ -99,8 +121,12 @@ app.post('/api/verify', async (req, res) => {
         hypothesis = `L'information du lien est : ${input}`;
     }
     
-    // Format NLI : Prémisse + Hypothèse
-    const textToAnalyze = CONTEXT_PREMISE + " " + hypothesis;
+    // --- NOUVEAU FORMAT D'ANALYSE (Meilleure démarcation) ---
+    // Le modèle NLI reçoit : Prémisse + [Séparateur] + Hypothèse
+    const textToAnalyze = `${CONTEXT_PREMISE} DÉCLARATION À VÉRIFIER: ${hypothesis}`;
+
+    // Log pour le développeur
+    console.log(`[Backend] Texte envoyé au modèle NLI (Tronqué pour console): ${truncateString(textToAnalyze, 100)}`);
 
 
     try {
@@ -186,7 +212,9 @@ app.post('/api/verify', async (req, res) => {
 
             // Ajout du contexte à l'explication (si pas en mode fallback simple)
             if (!CONTEXT_PREMISE.includes("La Terre tourne autour du Soleil")) {
-                verificationResult.explanation += `<br><br>Contexte Factuel Utilisé (Snippets de recherche) : <i class="text-xs italic">"${CONTEXT_PREMISE.substring(0, 150)}..."</i>`;
+                // Nettoyer la prémisse pour l'affichage utilisateur
+                const cleanPremise = CONTEXT_PREMISE.replace(/CONTEXTE FACTUEL: /, '').replace(/\[Snippet\]/g, ' -');
+                verificationResult.explanation += `<br><br>Contexte Factuel Utilisé (Snippets de recherche) : <i class="text-xs italic">"${cleanPremise.substring(0, 200)}..."</i>`;
             }
         }
         
