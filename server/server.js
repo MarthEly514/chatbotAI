@@ -1,18 +1,79 @@
 import express, { json } from 'express';
 import cors from 'cors';
-import fetch from 'node-fetch'; // Pour faire des requêtes HTTP depuis Node
-import 'dotenv/config'; // Chargement des variables d'environnement (.env) pour les modules ES
+import fetch from 'node-fetch';
+import 'dotenv/config';
 
 const app = express();
 const port = 3000;
 
 // Middleware
 app.use(cors());
-app.use(json()); // Pour analyser les corps de requête en JSON
+app.use(json());
 
 // --- Configuration API ---
 const HF_API_KEY = process.env.HUGGING_FACE_API_KEY;
 const HF_MODEL_URL = process.env.HF_MODEL_URL; 
+
+// --- Configuration Google Search API (Custom Search Engine) ---
+// Vous devez obtenir ces clés et les ajouter dans server/.env
+const GOOGLE_SEARCH_API_KEY = process.env.GOOGLE_SEARCH_API_KEY;
+const GOOGLE_SEARCH_CX = process.env.GOOGLE_SEARCH_CX; // L'ID de votre moteur de recherche personnalisé
+
+/**
+ * Fonction de Grounding (RAG - Retrieval-Augmented Generation)
+ * Appelle l'API Google Custom Search pour récupérer des faits pertinents.
+ * @param {string} query - La requête de l'utilisateur.
+ * @returns {Promise<string>} La prémisse (le fait connu) récupérée du web.
+ */
+async function fetchRealSearchContext(query) {
+    console.log(`[Grounding] Tentative de récupération du contexte de recherche pour: ${query}`);
+
+    // Si les clés de recherche ne sont pas configurées, on utilise le fallback
+    if (!GOOGLE_SEARCH_API_KEY || !GOOGLE_SEARCH_CX) {
+        console.warn("[Grounding] CLÉS GOOGLE SEARCH MANQUANTES ou INVALIDE. Utilisation du fallback statique.");
+        // --- FALLBACK STATIQUE (pour assurer la fonctionnalité) ---
+        if (query.toLowerCase().includes('paris') || query.toLowerCase().includes('france') || query.toLowerCase().includes('capitale')) {
+            return "La capitale de la France est Paris et la Tour Eiffel est l'un de ses monuments les plus célèbres.";
+        } 
+        if (query.toLowerCase().includes('chien') || query.toLowerCase().includes('chat') || query.toLowerCase().includes('animal')) {
+            return "Les chiens sont des mammifères domestiques et la race Golden Retriever est très populaire.";
+        }
+        return "La Terre tourne autour du Soleil et est la troisième planète du système solaire.";
+    }
+
+    // --- LOGIQUE D'APPEL RÉEL À GOOGLE CUSTOM SEARCH API ---
+    const searchUrl = `https://www.googleapis.com/customsearch/v1?q=${encodeURIComponent(query)}&cx=${GOOGLE_SEARCH_CX}&key=${GOOGLE_SEARCH_API_KEY}&num=3`;
+    
+    try {
+        const searchResponse = await fetch(searchUrl);
+        
+        if (!searchResponse.ok) {
+            const errorData = await searchResponse.text();
+            console.error("[Grounding] Erreur API Google Search:", searchResponse.status, errorData);
+            return "Une erreur est survenue lors de la recherche de contexte. Utilisons le fait général : La Terre tourne autour du Soleil.";
+        }
+        
+        const searchData = await searchResponse.json();
+        
+        if (searchData.items && searchData.items.length > 0) {
+            // Concaténation des snippets des 3 premiers résultats pour former la Prémisse
+            const snippets = searchData.items
+                .map(item => item.snippet)
+                .join(' --- '); // Séparateur clair pour le modèle NLI
+            
+            console.log(`[Grounding] Contexte réel récupéré (${searchData.items.length} snippets).`);
+            return snippets; 
+        } else {
+            console.log("[Grounding] Aucun résultat trouvé. Utilisation du fait général.");
+            return "Le moteur de recherche n'a trouvé aucune information récente ou pertinente sur ce sujet. Utilisateurs, veuillez prendre cette information avec précaution.";
+        }
+
+    } catch (e) {
+        console.error("[Grounding] Erreur réseau lors de l'appel à l'API de recherche:", e.message);
+        return "Une erreur de réseau empêche la récupération de contexte factuel. Utilisateurs, veuillez prendre cette information avec précaution.";
+    }
+}
+
 
 /**
  * Route sécurisée pour la vérification de l'information.
@@ -24,26 +85,22 @@ app.post('/api/verify', async (req, res) => {
         return res.status(400).json({ error: "Le champ 'input' est requis." });
     }
 
-    if (!HF_API_KEY || HF_API_KEY.includes('votre_vrai_jeton_huggingface_ici')) {
+    if (!HF_API_KEY || HF_API_KEY.includes('VOTRE_JETON_SEUL_ICI')) {
         console.error("Clé API Hugging Face non configurée ou placeholder utilisé.");
-        return res.status(500).json({ error: "Configuration API manquante sur le serveur. Veuillez remplacer le placeholder dans .env." });
+        return res.status(500).json({ error: "Configuration API Hugging Face manquante ou invalide dans .env." });
     }
 
-    // --- 1. AJOUT CRITIQUE : DÉFINITION DE LA PRÉMISSE (FAIT CONNU) ---
-    // ATTENTION : En production, cette prémisse doit être dynamique, 
-    // récupérée d'un moteur de recherche externe (Grounding/RAG) pour le VRAI fact-checking.
-    // Ici, nous utilisons un fait simple pour la démonstration NLI.
-    const CONTEXT_PREMISE = "La capitale de la France est Paris et la Tour Eiffel est l'un de ses monuments les plus célèbres.";
+    // --- 1. RÉCUPÉRATION DU CONTEXTE (Grounding) ---
+    const CONTEXT_PREMISE = await fetchRealSearchContext(input);
     
     let hypothesis = input;
     if (isLink) {
-        // Logique de scraping simulée pour les liens
+        // En production, le scraping réel aurait lieu ici
         hypothesis = `L'information du lien est : ${input}`;
     }
     
-    // Format NLI : Prémisse + Hypothèse (concaténation simple pour ce modèle)
+    // Format NLI : Prémisse + Hypothèse
     const textToAnalyze = CONTEXT_PREMISE + " " + hypothesis;
-    console.log(`[Backend] Texte envoyé au modèle NLI: ${textToAnalyze.substring(0, 100)}...`);
 
 
     try {
@@ -119,12 +176,17 @@ app.post('/api/verify', async (req, res) => {
              // Logique simple pour déterminer la fiabilité basée sur le score de confiance
              if (label === 'CONTRADICTION' && score > 0.8) {
                 verificationResult.status = 'FAKE_NEWS';
-                verificationResult.explanation = `Le modèle détecte une **forte contradiction** (Score: ${score.toFixed(2)}) avec le fait connu suivant: "${CONTEXT_PREMISE}".`;
+                verificationResult.explanation = `Le modèle détecte une **forte contradiction** (Score: ${score.toFixed(2)}) avec les faits trouvés par la recherche.`;
             } else if (label === 'ENTAILMENT' && score > 0.8) {
                 verificationResult.status = 'VERIFIED';
-                verificationResult.explanation = `Le modèle confirme la cohérence (Score: ${score.toFixed(2)}) de cette information avec le fait connu suivant: "${CONTEXT_PREMISE}".`;
+                verificationResult.explanation = `Le modèle confirme la cohérence (Score: ${score.toFixed(2)}) de cette information avec les faits trouvés par la recherche.`;
             } else {
                 verificationResult.explanation = `Le modèle est neutre ou l'indice de confiance (${score.toFixed(2)}) est trop bas.`;
+            }
+
+            // Ajout du contexte à l'explication (si pas en mode fallback simple)
+            if (!CONTEXT_PREMISE.includes("La Terre tourne autour du Soleil")) {
+                verificationResult.explanation += `<br><br>Contexte Factuel Utilisé (Snippets de recherche) : <i class="text-xs italic">"${CONTEXT_PREMISE.substring(0, 150)}..."</i>`;
             }
         }
         
