@@ -1,26 +1,23 @@
 {
-  "name": "chatbotai",
+  "name": "fact-checker-app",
   "version": "1.0.0",
-  "description": "",
-  "main": "main.js",
+  "description": "Fact-checking application using NLI and Google Search API.",
+  "main": "server/server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node server/server.js"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/MarthEly514/chatbotAI.git"
-  },
-  "keywords": [],
+  "keywords": [
+    "netlify",
+    "huggingface",
+    "fact-checking",
+    "nli"
+  ],
   "author": "",
   "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/MarthEly514/chatbotAI/issues"
-  },
-  "homepage": "https://github.com/MarthEly514/chatbotAI#readme",
   "dependencies": {
     "cors": "^2.8.5",
-    "dotenv": "^17.2.3",
-    "express": "^5.1.0",
-    "node-fetch": "^3.3.2"
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "node-fetch": "^2.7.0"
   }
 }

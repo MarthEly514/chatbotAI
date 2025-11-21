@@ -1,23 +1,13 @@
-import express, { json } from 'express';
-import cors from 'cors';
 import fetch from 'node-fetch';
-import 'dotenv/config';
 
-const app = express();
-const port = 3000;
-
-// Middleware
-app.use(cors());
-app.use(json());
+// Le module 'dotenv' n'est PAS requis ici car Netlify charge automatiquement les variables d'environnement.
 
 // --- Configuration API ---
+// Récupère les clés directement depuis l'environnement Netlify
 const HF_API_KEY = process.env.HUGGING_FACE_API_KEY;
 const HF_MODEL_URL = process.env.HF_MODEL_URL; 
-
-// --- Configuration Google Search API (Custom Search Engine) ---
-// Vous devez obtenir ces clés et les ajouter dans server/.env
 const GOOGLE_SEARCH_API_KEY = process.env.GOOGLE_SEARCH_API_KEY;
-const GOOGLE_SEARCH_CX = process.env.GOOGLE_SEARCH_CX; // L'ID de votre moteur de recherche personnalisé
+const GOOGLE_SEARCH_CX = process.env.GOOGLE_SEARCH_CX;
 
 /**
  * Fonction utilitaire pour tronquer une chaîne à une longueur maximale donnée.
@@ -44,19 +34,12 @@ async function fetchRealSearchContext(query) {
     
     // Si les clés de recherche ne sont pas configurées, on utilise le fallback
     if (!GOOGLE_SEARCH_API_KEY || !GOOGLE_SEARCH_CX) {
-        console.warn("[Grounding] CLÉS GOOGLE SEARCH MANQUANTES ou INVALIDE. Utilisation du fallback statique.");
-        // --- FALLBACK STATIQUE (pour assurer la fonctionnalité) ---
-        if (query.toLowerCase().includes('paris') || query.toLowerCase().includes('france') || query.toLowerCase().includes('capitale')) {
-            return "CONTEXTE FACTUEL: La capitale de la France est Paris et la Tour Eiffel est l'un de ses monuments les plus célèbres.";
-        } 
-        if (query.toLowerCase().includes('chien') || query.toLowerCase().includes('chat') || query.toLowerCase().includes('animal')) {
-            return "CONTEXTE FACTUEL: Les chiens sont des mammifères domestiques et la race Golden Retriever est très populaire.";
-        }
-        return "CONTEXTE FACTUEL: La Terre tourne autour du Soleil et est la troisième planète du système solaire.";
+        // En prod, le fallback doit être simple ou une erreur
+        return "CONTEXTE FACTUEL: Clés Google Search non configurées sur Netlify. Utilisateurs, veuillez prendre cette information avec précaution.";
     }
 
     // --- LOGIQUE D'APPEL RÉEL À GOOGLE CUSTOM SEARCH API ---
-    // MODIFICATION: Augmentation du nombre de résultats de 3 à 5 pour augmenter les chances d'obtenir un snippet pertinent.
+    // Augmentation du nombre de résultats à 5.
     const searchUrl = `https://www.googleapis.com/customsearch/v1?q=${encodeURIComponent(query)}&cx=${GOOGLE_SEARCH_CX}&key=${GOOGLE_SEARCH_API_KEY}&num=5&lr=lang_fr`;
     
     try {
@@ -65,49 +48,58 @@ async function fetchRealSearchContext(query) {
         if (!searchResponse.ok) {
             const errorData = await searchResponse.text();
             console.error("[Grounding] Erreur API Google Search:", searchResponse.status, errorData);
-            return "CONTEXTE FACTUEL: Une erreur est survenue lors de la recherche de contexte. Utilisateurs, veuillez prendre cette information avec précaution.";
+            return "CONTEXTE FACTUEL: Une erreur est survenue lors de la recherche de contexte (API Search).";
         }
         
         const searchData = await searchResponse.json();
         
         if (searchData.items && searchData.items.length > 0) {
-            // Concaténation des snippets pour former la Prémisse
-            // On préfixe chaque snippet pour le rendre plus clair pour le modèle NLI
             let snippets = searchData.items
                 .map(item => `[Snippet] ${item.snippet}`)
                 .join(' ');
             
-            // TRONCATURE : Limiter la prémisse totale à une taille plus courte (400 caractères)
-            // pour réduire le bruit dans la Prémisse NLI et accommoder 5 snippets.
+            // TRONCATURE : Limiter la prémisse totale à 400 caractères
             snippets = "CONTEXTE FACTUEL: " + truncateString(snippets, 400);
 
             console.log(`[Grounding] Contexte réel récupéré (${searchData.items.length} snippets).`);
             return snippets; 
         } else {
-            console.log("[Grounding] Aucun résultat trouvé. Utilisation du fait général.");
             return "CONTEXTE FACTUEL: Le moteur de recherche n'a trouvé aucune information récente ou pertinente sur ce sujet. Utilisateurs, veuillez prendre cette information avec précaution.";
         }
 
     } catch (e) {
         console.error("[Grounding] Erreur réseau lors de l'appel à l'API de recherche:", e.message);
-        return "CONTEXTE FACTUEL: Une erreur de réseau empêche la récupération de contexte factuel. Utilisateurs, veuillez prendre cette information avec précaution.";
+        return "CONTEXTE FACTUEL: Une erreur de réseau empêche la récupération de contexte factuel.";
     }
 }
 
 
 /**
- * Route sécurisée pour la vérification de l'information.
+ * Point d'entrée principal pour la fonction Netlify.
+ * @param {object} event - L'événement HTTP déclenchant la fonction.
  */
-app.post('/api/verify', async (req, res) => {
-    const { input, isLink } = req.body;
-
-    if (!input) {
-        return res.status(400).json({ error: "Le champ 'input' est requis." });
+export async function handler(event) {
+    // Les fonctions Netlify n'autorisent que la méthode POST dans ce contexte d'API
+    if (event.httpMethod !== 'POST') {
+        return { statusCode: 405, body: 'Méthode non autorisée. Utilisez POST.' };
     }
 
-    if (!HF_API_KEY || HF_API_KEY.includes('VOTRE_JETON_SEUL_ICI')) {
-        console.error("Clé API Hugging Face non configurée ou placeholder utilisé.");
-        return res.status(500).json({ error: "Configuration API Hugging Face manquante ou invalide dans .env." });
+    // Le corps de la requête est une chaîne JSON qui doit être parsée
+    let body;
+    try {
+        body = JSON.parse(event.body);
+    } catch (e) {
+        return { statusCode: 400, body: JSON.stringify({ error: "Corps de requête JSON invalide." }) };
+    }
+
+    const { input, isLink } = body;
+
+    if (!input) {
+        return { statusCode: 400, body: JSON.stringify({ error: "Le champ 'input' est requis." }) };
+    }
+
+    if (!HF_API_KEY || !HF_MODEL_URL) {
+        return { statusCode: 500, body: JSON.stringify({ error: "Configuration API Hugging Face manquante ou invalide dans Netlify." }) };
     }
 
     // --- 1. RÉCUPÉRATION DU CONTEXTE (Grounding) ---
@@ -115,17 +107,11 @@ app.post('/api/verify', async (req, res) => {
     
     let hypothesis = input;
     if (isLink) {
-        // En production, le scraping réel aurait lieu ici
         hypothesis = `L'information du lien est : ${input}`;
     }
     
-    // --- NOUVEAU FORMAT D'ANALYSE (Meilleure démarcation) ---
-    // Le modèle NLI reçoit : Prémisse + [Séparateur] + Hypothèse
+    // --- NOUVEAU FORMAT D'ANALYSE ---
     const textToAnalyze = `${CONTEXT_PREMISE} DÉCLARATION À VÉRIFIER: ${hypothesis}`;
-
-    // Log pour le développeur
-    console.log(`[Backend] Texte envoyé au modèle NLI (Tronqué pour console): ${truncateString(textToAnalyze, 100)}`);
-
 
     try {
         // --- 2. Appel Sécurisé à l'API Hugging Face ---
@@ -153,28 +139,26 @@ app.post('/api/verify', async (req, res) => {
                 errorData = await hfResponse.text();
             }
             
-            console.error('Erreur API Hugging Face (Statut %d):', hfResponse.status, errorData);
-            
             const errorMessage = typeof errorData === 'object' && errorData.error 
                 ? errorData.error
                 : `Statut ${hfResponse.status}: ${errorData}`;
 
-            return res.status(502).json({ 
-                error: "Erreur lors de la communication avec l'API Hugging Face.",
-                details: errorMessage
-            });
+            return {
+                statusCode: 502,
+                body: JSON.stringify({ 
+                    error: "Erreur lors de la communication avec l'API Hugging Face.",
+                    details: errorMessage
+                })
+            };
         }
 
         const data = await hfResponse.json();
 
         // --- 3. Logique de Fact-Checking et Préparation de la Réponse ---
         
-        let responseData = data;
-        if (Array.isArray(data) && data.length > 0) {
-            responseData = data[0];
-        }
-
+        let responseData = Array.isArray(data) ? data[0] : data;
         let bestResult = null;
+        
         if (responseData && responseData.labels && responseData.scores) {
             let maxScore = -1;
             let maxLabel = 'NEUTRAL';
@@ -209,22 +193,22 @@ app.post('/api/verify', async (req, res) => {
             }
 
             // Ajout du contexte à l'explication (si pas en mode fallback simple)
-            if (!CONTEXT_PREMISE.includes("La Terre tourne autour du Soleil")) {
-                // Nettoyer la prémisse pour l'affichage utilisateur
-                const cleanPremise = CONTEXT_PREMISE.replace(/CONTEXTE FACTUEL: /, '').replace(/\[Snippet\]/g, ' -');
-                verificationResult.explanation += `<br><br>Contexte Factuel Utilisé (Snippets de recherche) : <i class="text-xs italic">"${cleanPremise.substring(0, 200)}..."</i>`;
-            }
+            // Nettoyer la prémisse pour l'affichage utilisateur
+            const cleanPremise = CONTEXT_PREMISE.replace(/CONTEXTE FACTUEL: /, '').replace(/\[Snippet\]/g, ' -');
+            verificationResult.explanation += `<br><br>Contexte Factuel Utilisé (Snippets de recherche) : <i class="text-xs italic">"${cleanPremise.substring(0, 200)}..."</i>`;
         }
         
-        res.json(verificationResult);
+        return {
+            statusCode: 200,
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(verificationResult)
+        };
 
     } catch (error) {
-        console.error('Erreur interne du serveur:', error);
-        res.status(500).json({ error: "Erreur interne du serveur lors du traitement de l'information." });
+        console.error('Erreur interne de la fonction:', error);
+        return {
+            statusCode: 500,
+            body: JSON.stringify({ error: "Erreur interne de la fonction lors du traitement de l'information." })
+        };
     }
-});
-
-app.listen(port, () => {
-    console.log(`Serveur backend écoutant sur http://localhost:${port}`);
-    console.log('N’OUBLIEZ PAS DE LANCER LE FRONTEND (votre index.html)');
-});
+}

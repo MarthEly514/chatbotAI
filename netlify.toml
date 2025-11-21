@@ -1,0 +1,12 @@
+[build]
+  # Dossier qui contient les fichiers statiques (votre index.html, index.js)
+  publish = "."
+  # Dossier contenant les fonctions Netlify
+  functions = "functions"
+
+# Redirection : Toutes les requêtes à /api/v1/* sont envoyées à la fonction 'verify'
+# C'est important pour que le frontend (index.js) puisse parler à la fonction.
+[[redirects]]
+  from = "/.netlify/functions/verify"
+  to = "/.netlify/functions/verify"
+  status = 200
