@@ -1,5 +1,7 @@
 
-const BACKEND_URL = 'http://localhost:3000/api/verify';
+// const BACKEND_URL = 'http://localhost:3000/api/verify';// dev mode
+const BACKEND_URL = '/.netlify/functions/verify'; // prod mode
+
 
 // Éléments DOM
 const homePage = document.getElementById('homePage');
